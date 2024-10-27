@@ -1,0 +1,31 @@
+name: CI
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Download LocalXpose
+        run: Invoke-WebRequest https://localxpose.io/downloads/latest/localxpose-windows-amd64.zip -OutFile localxpose.zip
+
+      - name: Extract LocalXpose
+        run: Expand-Archive localxpose.zip -DestinationPath .\localxpose
+
+      - name: Auth LocalXpose
+        run: .\localxpose\lx.exe authtoken $Env:LOCALXPOSE_TOKEN
+        env:
+          LOCALXPOSE_TOKEN: ${{ secrets.LOCALXPOSE_TOKEN }}
+
+      - name: Enable Remote Desktop
+        run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+
+      - name: Enable Firewall for Remote Desktop
+        run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop" -ErrorAction Stop
+
+      - name: Set Password for runneradmin
+        run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+      - name: Start LocalXpose Tunnel on port 3000
+        run: .\localxpose\lx.exe http 3000 --name "MonTunnelLocalhost3000"
